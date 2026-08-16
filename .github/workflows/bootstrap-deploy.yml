@@ -30,8 +30,22 @@ jobs:
         run: |
           set -euo pipefail
           test -d .bootstrap/site-v2
-          mapfile -t parts < <(find .bootstrap/site-v2 -maxdepth 1 -type f -name 'part-*' | sort)
-          test "${#parts[@]}" -eq 8
+          parts=(
+            .bootstrap/site-v2/part-00
+            .bootstrap/site-v2/part-01
+            .bootstrap/site-v2/part-02a
+            .bootstrap/site-v2/part-02b
+            .bootstrap/site-v2/part-02c
+            .bootstrap/site-v2/part-02d
+            .bootstrap/site-v2/part-03
+            .bootstrap/site-v2/part-04
+            .bootstrap/site-v2/part-05
+            .bootstrap/site-v2/part-06
+            .bootstrap/site-v2/part-07
+          )
+          for part in "${parts[@]}"; do
+            test -f "$part"
+          done
           cat "${parts[@]}" > /tmp/weibo-site.tar.xz.b64
           test "$(wc -c < /tmp/weibo-site.tar.xz.b64)" -eq 137944
           base64 --decode /tmp/weibo-site.tar.xz.b64 > /tmp/weibo-site.tar.xz
