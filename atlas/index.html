@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Interactive visualisation of three anonymised Weibo forwarding networks from the Bell and Drum Tower planning controversy in Beijing." />
+  <meta name="theme-color" content="#f4f6f8" />
+  <title>Weibo Interaction Networks</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar" aria-label="Network controls">
+      <div class="sidebar-inner">
+        <header class="brand">
+          <h1>Weibo Interaction Networks</h1>
+          <p class="subtitle">Bell and Drum Tower planning controversy, Beijing</p>
+          <p class="description">
+            Explore three anonymised forwarding networks initiated by an expert, a government authority, and a civil society organisation.
+          </p>
+          <div id="error-box" role="alert"></div>
+        </header>
+
+        <section class="control-section">
+          <div class="section-title">
+            <h2>Network</h2>
+            <span class="value" id="network-code">—</span>
+          </div>
+          <label for="network-select">Initiating actor</label>
+          <select id="network-select" aria-label="Choose a network"></select>
+          <p class="coverage" id="network-description"></p>
+        </section>
+
+        <section class="control-section">
+          <div class="section-title">
+            <h2>Filter</h2>
+            <span class="value" id="filter-summary">All nodes</span>
+          </div>
+
+          <div class="field">
+            <div class="range-head">
+              <label for="node-share">Nodes shown</label>
+              <span class="range-value" id="node-share-value">100%</span>
+            </div>
+            <input id="node-share" type="range" min="5" max="100" step="5" value="100" />
+            <div class="range-row"><span>most connected</span><span>all nodes</span></div>
+          </div>
+
+          <div class="field">
+            <div class="range-head">
+              <label for="edge-weight">Minimum interaction count</label>
+              <span class="range-value" id="edge-weight-value">1</span>
+            </div>
+            <input id="edge-weight" type="range" min="1" max="1" step="1" value="1" />
+            <div class="range-row"><span>all ties</span><span id="edge-weight-max">—</span></div>
+          </div>
+        </section>
+
+        <section class="control-section">
+          <div class="section-title">
+            <h2>Display</h2>
+            <span class="value">Network graph</span>
+          </div>
+
+          <div class="field">
+            <label for="node-size">Node size</label>
+            <select id="node-size">
+              <option value="weighted">Interaction degree</option>
+              <option value="degree">Unique connections</option>
+              <option value="pagerank">PageRank</option>
+              <option value="uniform">Uniform</option>
+            </select>
+          </div>
+
+          <label class="inline-check" for="show-labels">
+            <input id="show-labels" type="checkbox" />
+            <span>Label the most connected nodes</span>
+          </label>
+          <label class="inline-check" for="show-arrows">
+            <input id="show-arrows" type="checkbox" />
+            <span>Show edge directions</span>
+          </label>
+
+          <div class="button-row">
+            <button id="fit-button" type="button" class="primary">Fit graph</button>
+            <button id="clear-button" type="button">Clear focus</button>
+          </div>
+        </section>
+
+        <section class="control-section">
+          <div class="section-title">
+            <h2>Visible network</h2>
+            <span class="value" id="selected-label">—</span>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="label">Nodes</div>
+              <div class="number" id="stat-nodes">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">Directed edges</div>
+              <div class="number" id="stat-edges">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">Interactions</div>
+              <div class="number" id="stat-interactions">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">Communities</div>
+              <div class="number" id="stat-communities">—</div>
+            </div>
+          </div>
+          <p class="coverage colour-note"><span class="colour-swatch"></span>Node and edge colours indicate structural communities.</p>
+        </section>
+
+        <footer class="footer">
+          <p>Only anonymised nodes, directed edges, structural metrics, and layout coordinates are used in the atlas.</p>
+          <div class="links">
+            <a href="https://doi.org/10.1016/j.cities.2024.104866" target="_blank" rel="noopener">Paper</a>
+            <a href="https://github.com/JunyaoHe001/weibo-3-networks" target="_blank" rel="noopener">GitHub</a>
+          </div>
+        </footer>
+      </div>
+    </aside>
+
+    <main id="network-wrap">
+      <button id="mobile-toggle" type="button">Controls</button>
+      <div id="sidebar-scrim" aria-hidden="true"></div>
+      <canvas id="network-canvas" aria-label="Interactive directed network graph"></canvas>
+      <div id="network-summary">Loading network…</div>
+      <div id="canvas-help">Drag to pan · Scroll to zoom · Click a node to highlight its neighbourhood</div>
+      <div class="zoom-controls" aria-label="Zoom controls">
+        <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
+        <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
+        <button id="zoom-fit" type="button" aria-label="Fit graph">⌂</button>
+      </div>
+      <div id="tooltip" role="tooltip"></div>
+      <div id="loading">
+        <div class="loading-card">
+          <div class="spinner"></div>
+          <div id="loading-text">Loading network…</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="./app.js" defer></script>
+</body>
+</html>
