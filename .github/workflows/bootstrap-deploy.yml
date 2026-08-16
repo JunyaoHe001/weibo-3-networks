@@ -1,0 +1,83 @@
+name: Bootstrap and deploy the simplified atlas
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.bootstrap/simple/**'
+      - '.github/workflows/bootstrap-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  bootstrap-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reconstruct the prepared repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d .bootstrap/simple
+          mapfile -t parts < <(find .bootstrap/simple -maxdepth 1 -type f -name 'part-*' | sort)
+          test "${#parts[@]}" -gt 0
+          cat "${parts[@]}" > /tmp/weibo-project.tar.xz.b64
+          base64 --decode /tmp/weibo-project.tar.xz.b64 > /tmp/weibo-project.tar.xz
+          xz -t /tmp/weibo-project.tar.xz
+          rm -rf /tmp/weibo-project
+          mkdir -p /tmp/weibo-project
+          tar -xJf /tmp/weibo-project.tar.xz -C /tmp/weibo-project
+          project=/tmp/weibo-project/weibo-3-networks
+          test -f "$project/index.html"
+          test -f "$project/atlas/index.html"
+          test -f "$project/atlas/app.js"
+          test -f "$project/atlas/styles.css"
+          test -f "$project/atlas/data/manifest.json"
+          test -f "$project/atlas/data/expert.json"
+          test -f "$project/atlas/data/government.json"
+          test -f "$project/atlas/data/cso.json"
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a "$project"/. .
+          rm -rf .bootstrap
+
+      - name: Commit the final repository contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "Deploy simplified interactive Weibo network atlas"
+            git push origin HEAD:main
+          fi
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload the static site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
