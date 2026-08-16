@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - '.bootstrap/simple/**'
+      - '.bootstrap/site-v2/**'
       - '.github/workflows/bootstrap-deploy.yml'
   workflow_dispatch:
 
@@ -29,28 +29,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -d .bootstrap/simple
-          mapfile -t parts < <(find .bootstrap/simple -maxdepth 1 -type f -name 'part-*' | sort)
-          test "${#parts[@]}" -eq 10
+          test -d .bootstrap/site-v2
+          mapfile -t parts < <(find .bootstrap/site-v2 -maxdepth 1 -type f -name 'part-*' | sort)
+          test "${#parts[@]}" -eq 8
+          cat "${parts[@]}" > /tmp/weibo-site.tar.xz.b64
+          test "$(wc -c < /tmp/weibo-site.tar.xz.b64)" -eq 137944
+          base64 --decode /tmp/weibo-site.tar.xz.b64 > /tmp/weibo-site.tar.xz
+          echo "8f73b8848975129cd3817a6aaa8ff185d05ffe4db7a8e8eb8da36f3a13855a18  /tmp/weibo-site.tar.xz" | sha256sum -c -
+          xz -t /tmp/weibo-site.tar.xz
 
-          : > /tmp/weibo-project.tar.xz.b64
-          for part in "${parts[@]}"; do
-            if [[ "$part" == *"part-03" ]]; then
-              # The original upload contains one stray trailing byte in this part.
-              head -c 18000 "$part" >> /tmp/weibo-project.tar.xz.b64
-            else
-              cat "$part" >> /tmp/weibo-project.tar.xz.b64
-            fi
-          done
-
-          test "$(wc -c < /tmp/weibo-project.tar.xz.b64)" -eq 180000
-          base64 --decode /tmp/weibo-project.tar.xz.b64 > /tmp/weibo-project.tar.xz
-          xz -t /tmp/weibo-project.tar.xz
-
-          rm -rf /tmp/weibo-project
-          mkdir -p /tmp/weibo-project
-          tar -xJf /tmp/weibo-project.tar.xz -C /tmp/weibo-project
-          project=/tmp/weibo-project/weibo-3-networks
+          rm -rf /tmp/weibo-site
+          mkdir -p /tmp/weibo-site
+          tar -xJf /tmp/weibo-site.tar.xz -C /tmp/weibo-site
+          project=/tmp/weibo-site/weibo-3-networks
 
           test -f "$project/index.html"
           test -f "$project/atlas/index.html"
@@ -65,7 +56,7 @@ jobs:
           import json
           from pathlib import Path
 
-          root = Path('/tmp/weibo-project/weibo-3-networks/atlas/data')
+          root = Path('/tmp/weibo-site/weibo-3-networks/atlas/data')
           expected = {
               'expert.json': (4002, 4154),
               'government.json': (165, 200),
@@ -84,7 +75,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          project=/tmp/weibo-project/weibo-3-networks
+          project=/tmp/weibo-site/weibo-3-networks
           cd "$project"
           rm -rf .git .github .bootstrap
           touch .nojekyll
