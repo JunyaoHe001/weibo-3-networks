@@ -1,4 +1,4 @@
-name: Bootstrap and deploy the simplified atlas
+name: Publish simplified Weibo network atlas
 
 on:
   push:
@@ -10,19 +10,14 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages-bootstrap
+  group: publish-weibo-atlas
   cancel-in-progress: false
 
 jobs:
-  bootstrap-and-deploy:
+  publish:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       - name: Check out repository
@@ -30,20 +25,33 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Reconstruct the prepared repository
+      - name: Reconstruct and verify the prepared site
         shell: bash
         run: |
           set -euo pipefail
           test -d .bootstrap/simple
           mapfile -t parts < <(find .bootstrap/simple -maxdepth 1 -type f -name 'part-*' | sort)
-          test "${#parts[@]}" -gt 0
-          cat "${parts[@]}" > /tmp/weibo-project.tar.xz.b64
+          test "${#parts[@]}" -eq 10
+
+          : > /tmp/weibo-project.tar.xz.b64
+          for part in "${parts[@]}"; do
+            if [[ "$part" == *"part-03" ]]; then
+              # The original upload contains one stray trailing byte in this part.
+              head -c 18000 "$part" >> /tmp/weibo-project.tar.xz.b64
+            else
+              cat "$part" >> /tmp/weibo-project.tar.xz.b64
+            fi
+          done
+
+          test "$(wc -c < /tmp/weibo-project.tar.xz.b64)" -eq 180000
           base64 --decode /tmp/weibo-project.tar.xz.b64 > /tmp/weibo-project.tar.xz
           xz -t /tmp/weibo-project.tar.xz
+
           rm -rf /tmp/weibo-project
           mkdir -p /tmp/weibo-project
           tar -xJf /tmp/weibo-project.tar.xz -C /tmp/weibo-project
           project=/tmp/weibo-project/weibo-3-networks
+
           test -f "$project/index.html"
           test -f "$project/atlas/index.html"
           test -f "$project/atlas/app.js"
@@ -52,32 +60,39 @@ jobs:
           test -f "$project/atlas/data/expert.json"
           test -f "$project/atlas/data/government.json"
           test -f "$project/atlas/data/cso.json"
-          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-          cp -a "$project"/. .
-          rm -rf .bootstrap
 
-      - name: Commit the final repository contents
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path('/tmp/weibo-project/weibo-3-networks/atlas/data')
+          expected = {
+              'expert.json': (4002, 4154),
+              'government.json': (165, 200),
+              'cso.json': (846, 1036),
+          }
+          for name, (nodes, edges) in expected.items():
+              data = json.loads((root / name).read_text(encoding='utf-8'))
+              assert len(data['nodes']) == nodes, (name, len(data['nodes']), nodes)
+              assert len(data['edges']) == edges, (name, len(data['edges']), edges)
+          print('All three network files passed structural validation.')
+          PY
+
+      - name: Publish verified site to gh-pages
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          project=/tmp/weibo-project/weibo-3-networks
+          cd "$project"
+          rm -rf .git .github .bootstrap
+          touch .nojekyll
+
+          git init -b gh-pages
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          if ! git diff --cached --quiet; then
-            git commit -m "Deploy simplified interactive Weibo network atlas"
-            git push origin HEAD:main
-          fi
-
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
-
-      - name: Upload the static site
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          git commit -m "Publish simplified interactive Weibo network atlas"
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin gh-pages
